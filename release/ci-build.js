@@ -32,7 +32,7 @@ async function buildWindows() {
   }
 
   const url = `https://broth.itch.ovh/itch-setup/windows-386/LATEST/unpacked/default`
-  $(await $.sh(`wget ${url} -O staging/itch-setup.exe`))
+  $(await $.sh(`curl -L ${url} -o staging/itch-setup.exe`))
 
   $(await $.sh(`mkdir -p broth/install-itch/windows-386`))
   $(await $.sh(`cp staging/itch-setup.exe broth/install-itch/windows-386/itch-setup.exe`))
@@ -49,7 +49,7 @@ async function buildDarwin() {
   }
 
   const url = `https://broth.itch.ovh/itch-setup/darwin-amd64/LATEST/unpacked/default`
-  $(await $.sh(`wget ${url} -O staging/itch-setup`))
+  $(await $.sh(`curl -L ${url} -o staging/itch-setup`))
   $(await $.sh(`chmod +x staging/itch-setup`));
 
   const signKey = "Developer ID Application: Amos Wenger (B2N6FSRTPV)";
