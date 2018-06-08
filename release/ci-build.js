@@ -84,7 +84,7 @@ async function buildDarwin() {
     $(await $.sh(`mkdir -p ${prefix}/Contents/MacOS`));
     $(await $.sh(`cp staging/itch-setup ${prefix}/Contents/MacOS/${appname}-setup`));
     $(await $.sh(`mkdir -p ${prefix}/Contents/Resources`));
-    $(await $.sh(`cp resources/${appname}.icns ${prefix}/Contents/Resources/${appname}.icns`));
+    $(await $.sh(`cp resources/${appname}.icns ${prefix}/Contents/Resources/${appname}-setup`));
     await $.writeFile(`${prefix}/Contents/Info.plist`, infoPlistContents);
 
     const dist = `broth/install-${appname}/darwin-amd64`;
