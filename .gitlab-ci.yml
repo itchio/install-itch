@@ -23,7 +23,7 @@ build:darwin:amd64:
     - export CI_ARCH=amd64
     - release/ci-build.js
   tags:
-    - 
+    - darwin
   artifacts:
     expire_in: 1 week
     paths:
@@ -36,7 +36,7 @@ build:linux:amd64:
     - export CI_ARCH=amd64
     - release/ci-build.js
   tags:
-    - 
+    - docker-itchsetup-64
   artifacts:
     expire_in: 1 week
     paths:
