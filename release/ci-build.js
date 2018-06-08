@@ -177,7 +177,7 @@ Description: install and play itch.io games easily
 
       await $.writeFile("debian-binary", "2.0\n");
 
-      const outFolder = `../../broth/install-${appname}/deb-${arch}`;
+      const outFolder = `../../broth/install-${appname}/linux-deb-${arch}`;
       $(await $.sh(`mkdir -p ${outFolder}`))
       const deb = `${outFolder}/${appname}_${version}_${debArch}.deb`;
       const debContents = [

@@ -17,7 +17,7 @@ async function main() {
 
   await $.cd("broth", async () => {
     const projects = fs.readdirSync(".");
-    for (const project of projets) {
+    for (const project of projects) {
       await pushProject(project);
     }
   });
