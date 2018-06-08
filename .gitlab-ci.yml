@@ -29,6 +29,19 @@ build:darwin:amd64:
     paths:
       - broth
 
+build:linux:386:
+  stage: build
+  script:
+    - export CI_OS=linux
+    - export CI_ARCH=386
+    - release/ci-build.js
+  tags:
+    - linux
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - broth
+
 build:linux:amd64:
   stage: build
   script:
@@ -36,7 +49,7 @@ build:linux:amd64:
     - export CI_ARCH=amd64
     - release/ci-build.js
   tags:
-    - docker-itchsetup-64
+    - linux
   artifacts:
     expire_in: 1 week
     paths:
