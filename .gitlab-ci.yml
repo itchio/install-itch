@@ -1,0 +1,23 @@
+
+stages:
+  - build
+  - deploy
+
+build:windows:386:
+  stage: build
+  script:
+    - export CI_OS=windows
+    - export CI_ARCH=386
+    - release/ci-build.js
+  tags:
+    - windows
+  artifacts:
+    paths:
+      - broth
+
+deploy:
+  stage: deploy
+  tags:
+    - dropsy
+  script:
+    - release/ci-deploy.sh
