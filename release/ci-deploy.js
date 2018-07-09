@@ -2,6 +2,7 @@
 
 const $ = require("./common");
 const fs = require("fs");
+const {join} = require("path");
 
 async function main() {
   const toolsDir = join(process.cwd(), "tools")
