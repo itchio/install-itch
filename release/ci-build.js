@@ -36,10 +36,21 @@ async function buildWindows() {
   const url = `https://broth.itch.ovh/itch-setup/windows-386/LATEST/unpacked/default`
   $(await $.sh(`curl -L ${url} -o staging/itch-setup.exe`))
 
+  // see package function
+  // forward-slashes are doubled because of mingw, see http://www.mingw.org/wiki/Posix_path_conversion
+  let signParams =
+    '//v //s MY //n "itch corp." //fd sha256 //tr http://timestamp.comodoca.com/?td=sha256 //td sha256';
+  let signtoolPath = "vendor/signtool.exe";
+
   $(await $.sh(`mkdir -p broth/install-itch/windows-386`))
-  $(await $.sh(`cp staging/itch-setup.exe broth/install-itch/windows-386/itch-setup.exe`))
+  const destItch = `broth/install-itch/windows-386/itch-setup.exe`;
+  $(await $.sh(`cp staging/itch-setup.exe ${destItch}`))
+  $(await $.sh(`${signtoolPath} sign ${signParams} ${destItch}`));
+
   $(await $.sh(`mkdir -p broth/install-kitch/windows-386`))
-  $(await $.sh(`cp staging/itch-setup.exe broth/install-kitch/windows-386/kitch-setup.exe`))
+  const destKitch = `broth/install-kitch/windows-386/kitch-setup.exe`;
+  $(await $.sh(`cp staging/itch-setup.exe ${destKitch}`))
+  $(await $.sh(`${signtoolPath} sign ${signParams} ${destKitch}`));
 
   $.say(`That's all! That was easy :)`)
 }
