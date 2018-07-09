@@ -19,7 +19,7 @@ async function main() {
       const osarches = fs.readdirSync(".");
       for (const osarch of osarches) {
         const target = `${projectPage}:${osarch}`;
-        $(await $.sh(`${toolsDir}/butler push "${process.cwd()}" "${target}"`));
+        $(await $.sh(`${toolsDir}/butler push "./${osarch}" "${target}"`));
       }
     });
   }
