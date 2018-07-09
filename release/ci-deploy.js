@@ -6,12 +6,12 @@ const {join} = require("path");
 
 async function main() {
   const toolsDir = join(process.cwd(), "tools")
-  await $.sh(`mkdir -p "${toolsDir}"`);
+  $(await $.sh(`mkdir -p "${toolsDir}"`));
   await $.cd(toolsDir, async () => {
-    await $.sh(`curl -sLo butler.zip "https://broth.itch.ovh/butler/linux-amd64-head/LATEST/.zip"`)
-    await $.sh(`unzip butler.zip`)
+    $(await $.sh(`curl -sLo butler.zip "https://broth.itch.ovh/butler/linux-amd64-head/LATEST/.zip"`));
+    $(await $.sh(`unzip butler.zip`));
   });
-  await $.sh(`${toolsDir}/butler -V`);
+  $(await $.sh(`${toolsDir}/butler -V`));
 
   const pushProject = async (project) => {
     const projectPage = `fasterthanlime/${project}`;
@@ -19,7 +19,7 @@ async function main() {
       const osarches = fs.readdirSync(".");
       for (const osarch of osarches) {
         const target = `${projectPage}:${osarch}`;
-        await $.sh(`${toolsDir}/butler push "${process.cwd()}" "${target}"`);
+        $(await $.sh(`${toolsDir}/butler push "${process.cwd()}" "${target}"`));
       }
     });
   }
