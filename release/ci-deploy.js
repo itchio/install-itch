@@ -4,13 +4,21 @@ const $ = require("./common");
 const fs = require("fs");
 
 async function main() {
+  const toolsDir = join(process.cwd(), "tools")
+  await $.sh(`mkdir -p "${toolsDir}"`);
+  await $.cd(toolsDir, async () => {
+    await $.sh(`curl -sLo butler.zip "https://broth.itch.ovh/butler/linux-amd64-head/LATEST/.zip"`)
+    await $.sh(`unzip butler.zip`)
+  });
+  await $.sh(`${toolsDir}/butler -V`);
+
   const pushProject = async (project) => {
     const projectPage = `fasterthanlime/${project}`;
     await $.cd(project, async () => {
       const osarches = fs.readdirSync(".");
       for (const osarch of osarches) {
         const target = `${projectPage}:${osarch}`;
-        $.say(`Should push ${process.cwd()} to ${target}`);
+        await $.sh(`${toolsDir}/butler push "${process.cwd()}" "${target}"`);
       }
     });
   }
@@ -21,8 +29,6 @@ async function main() {
       await pushProject(project);
     }
   });
-
-  $.say(`It's uhh pretty radical.`)
 }
 
 main();
