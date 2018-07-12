@@ -49,13 +49,13 @@ async function buildDarwin() {
     throw new Error(`only know how to build darwin amd64 package, not ${arch}`);
   }
 
-  const url = `https://broth.itch.ovh/${appname}-setup/darwin-amd64/LATEST/unpacked/default`;
-  $(await $.sh(`curl -L ${url} -o staging/${appname}-setup`));
-  $(await $.sh(`chmod +x staging/${appname}-setup`));
-
   const signKey = "Developer ID Application: Amos Wenger (B2N6FSRTPV)";
 
   for (const appname of ["itch", "kitch"]) {
+    const url = `https://broth.itch.ovh/${appname}-setup/darwin-amd64/LATEST/unpacked/default`;
+    $(await $.sh(`curl -L ${url} -o staging/${appname}-setup`));
+    $(await $.sh(`chmod +x staging/${appname}-setup`));
+
     const infoPlistContents = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
