@@ -7,16 +7,16 @@ const version = "25.0.0";
 async function main() {
   const os = process.env.CI_OS;
   if (!os) {
-    throw new Error(`CI_OS must be set`)
+    throw new Error(`CI_OS must be set`);
   }
 
   const arch = process.env.CI_ARCH;
   if (!arch) {
-    throw new Error(`CI_ARCH must be set`)
+    throw new Error(`CI_ARCH must be set`);
   }
 
-  $(await $.sh("rm -rf staging"))
-  $(await $.sh("mkdir -p staging"))
+  $(await $.sh("rm -rf staging"));
+  $(await $.sh("mkdir -p staging"));
 
   if (os === "windows") {
     await buildWindows();
@@ -33,26 +33,14 @@ async function buildWindows() {
     throw new Error(`only know how to build windows 386 package, not ${arch}`);
   }
 
-  const url = `https://broth.itch.ovh/itch-setup/windows-386/LATEST/unpacked/default`
-  $(await $.sh(`curl -L ${url} -o staging/itch-setup.exe`))
+  for (const appname of ["itch", "kitch"]) {
+    const url = `https://broth.itch.ovh/${appname}-setup/windows-386/LATEST/unpacked/default`;
+    const dir = `broth/install-${appname}/windows-386`;
+    $(await $.sh(`mkdir -p ${dir}`));
+    $(await $.sh(`curl -L ${url} -o ${dir}/${appname}-setup.exe`));
+  }
 
-  // see package function
-  // forward-slashes are doubled because of mingw, see http://www.mingw.org/wiki/Posix_path_conversion
-  let signParams =
-    '//v //s MY //n "itch corp." //fd sha256 //tr http://timestamp.comodoca.com/?td=sha256 //td sha256';
-  let signtoolPath = "vendor/signtool.exe";
-
-  $(await $.sh(`mkdir -p broth/install-itch/windows-386`))
-  const destItch = `broth/install-itch/windows-386/itch-setup.exe`;
-  $(await $.sh(`cp staging/itch-setup.exe ${destItch}`))
-  $(await $.sh(`${signtoolPath} sign ${signParams} ${destItch}`));
-
-  $(await $.sh(`mkdir -p broth/install-kitch/windows-386`))
-  const destKitch = `broth/install-kitch/windows-386/kitch-setup.exe`;
-  $(await $.sh(`cp staging/itch-setup.exe ${destKitch}`))
-  $(await $.sh(`${signtoolPath} sign ${signParams} ${destKitch}`));
-
-  $.say(`That's all! That was easy :)`)
+  $.say(`That's all! That was easy :)`);
 }
 
 async function buildDarwin() {
@@ -61,14 +49,14 @@ async function buildDarwin() {
     throw new Error(`only know how to build darwin amd64 package, not ${arch}`);
   }
 
-  const url = `https://broth.itch.ovh/itch-setup/darwin-amd64/LATEST/unpacked/default`
-  $(await $.sh(`curl -L ${url} -o staging/itch-setup`))
-  $(await $.sh(`chmod +x staging/itch-setup`));
+  const url = `https://broth.itch.ovh/${appname}-setup/darwin-amd64/LATEST/unpacked/default`;
+  $(await $.sh(`curl -L ${url} -o staging/${appname}-setup`));
+  $(await $.sh(`chmod +x staging/${appname}-setup`));
 
   const signKey = "Developer ID Application: Amos Wenger (B2N6FSRTPV)";
 
   for (const appname of ["itch", "kitch"]) {
-  const infoPlistContents = `<?xml version="1.0" encoding="UTF-8"?>
+    const infoPlistContents = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
   <dict>
@@ -95,43 +83,63 @@ async function buildDarwin() {
 
     const prefix = `staging/install-${appname}-app`;
     $(await $.sh(`mkdir -p ${prefix}/Contents/MacOS`));
-    $(await $.sh(`cp staging/itch-setup ${prefix}/Contents/MacOS/${appname}-setup`));
+    $(
+      await $.sh(
+        `cp staging/${appname}-setup ${prefix}/Contents/MacOS/${appname}-setup`
+      )
+    );
     $(await $.sh(`mkdir -p ${prefix}/Contents/Resources`));
-    $(await $.sh(`cp resources/${appname}.icns ${prefix}/Contents/Resources/${appname}-setup`));
+    $(
+      await $.sh(
+        `cp resources/${appname}.icns ${prefix}/Contents/Resources/${appname}-setup`
+      )
+    );
     await $.writeFile(`${prefix}/Contents/Info.plist`, infoPlistContents);
 
     const dist = `broth/install-${appname}/darwin-amd64`;
-    $(await $.sh(`mkdir -p ${dist}`))
+    $(await $.sh(`mkdir -p ${dist}`));
     const appBundle = `${dist}/Install ${appname}.app`;
     $(await $.sh(`mv ${prefix} "${appBundle}"`));
-    $(await $.sh(`codesign --deep --force --verbose --sign "${signKey}" "${appBundle}"`));
+    $(
+      await $.sh(
+        `codesign --deep --force --verbose --sign "${signKey}" "${appBundle}"`
+      )
+    );
     $(await $.sh(`codesign --verify -vvvv "${appBundle}"`));
     $(await $.sh(`spctl -a -vvvv "${appBundle}"`));
   }
 
-  $.say(`That's all! that was easy :)`)
+  $.say(`That's all! that was easy :)`);
 }
 
 async function buildDeb() {
   const arch = process.env.CI_ARCH;
-  let debArch = (arch == "386" ? "i386" : "amd64");
+  let debArch = arch == "386" ? "i386" : "amd64";
 
   await $($.sh(`fakeroot -v`));
   await $($.sh(`ar -V`));
 
   for (const appname of ["itch", "kitch"]) {
     const stage2 = `staging/stage2`;
-    await prepareStage2({arch, appname, stage2});
-    $(await $.sh(`mkdir -p ${stage2}/DEBIAN`))
+    await prepareStage2({ arch, appname, stage2 });
+    $(await $.sh(`mkdir -p ${stage2}/DEBIAN`));
 
-    $(await $.sh(`mkdir -p ${stage2}/usr/share/doc/${appname}`))
-    $(await $.sh(`cp resources/debian/copyright ${stage2}/usr/share/doc/${appname}`))
+    $(await $.sh(`mkdir -p ${stage2}/usr/share/doc/${appname}`));
+    $(
+      await $.sh(
+        `cp resources/debian/copyright ${stage2}/usr/share/doc/${appname}`
+      )
+    );
 
-    $(await $.sh(`mkdir -p ${stage2}/usr/share/lintian/overrides`))
-    $(await $.sh(`cp resources/debian/lintian-overrides ${stage2}/usr/share/lintian/overrides/${appname}`))
+    $(await $.sh(`mkdir -p ${stage2}/usr/share/lintian/overrides`));
+    $(
+      await $.sh(
+        `cp resources/debian/lintian-overrides ${stage2}/usr/share/lintian/overrides/${appname}`
+      )
+    );
 
     const duOutput = await $.getOutput(`du -ck ${stage2}`);
-    const duLines = duOutput.trim().split('\n');
+    const duLines = duOutput.trim().split("\n");
     const totalLine = duLines[duLines.length - 1];
     const installedSize = parseInt(/^[0-9]+/.exec(totalLine), 10);
 
@@ -155,14 +163,14 @@ Description: install and play itch.io games easily
   games right into the app, letting you play them offline whenever you want.
   Once you're back online you'll be able to grab any updates if necessary.
   Thanks to the itch.io community, itch is available in over 20 languages!
-`
+`;
     await $.writeFile(`${stage2}/DEBIAN/control`, controlContents);
 
     await $.cd(stage2, async () => {
-      let sums = '';
-      const allFiles = await $.findAllFiles('usr/');
+      let sums = "";
+      const allFiles = await $.findAllFiles("usr/");
       for (const file of allFiles) {
-        sums += `${await $.md5(file)} ${file}\n`
+        sums += `${await $.md5(file)} ${file}\n`;
         const stat = await $.lstat(file);
         const perms = stat.mode & 0o777;
         switch (perms) {
@@ -174,7 +182,7 @@ Description: install and play itch.io games easily
             break;
         }
       }
-      await $.writeFile(`DEBIAN/md5sums`, sums)
+      await $.writeFile(`DEBIAN/md5sums`, sums);
 
       await $.cd("DEBIAN", async () => {
         $(await $.sh(`fakeroot tar cfz ../control.tar.gz .`));
@@ -189,29 +197,29 @@ Description: install and play itch.io games easily
       await $.writeFile("debian-binary", "2.0\n");
 
       const outFolder = `../../broth/install-${appname}/linux-deb-${arch}`;
-      $(await $.sh(`mkdir -p ${outFolder}`))
+      $(await $.sh(`mkdir -p ${outFolder}`));
       const deb = `${outFolder}/${appname}_${version}_${debArch}.deb`;
-      const debContents = [
-        "debian-binary",
-        "control.tar.gz",
-        "data.tar.xz",
-      ];
-      $(await $.sh(`ar cq ${deb} ${debContents.join(" ")}`))
+      const debContents = ["debian-binary", "control.tar.gz", "data.tar.xz"];
+      $(await $.sh(`ar cq ${deb} ${debContents.join(" ")}`));
     });
   }
 }
 
-async function prepareStage2({arch, appname, stage2}) {
+async function prepareStage2({ arch, appname, stage2 }) {
   $(await $.sh(`rm -rf ${stage2}`));
   $(await $.sh(`mkdir -p ${stage2}`));
   $(await $.sh(`mkdir -p ${stage2}/usr/bin`));
   $(await $.sh(`mkdir -p ${stage2}/usr/share/applications`));
 
-  for (const size of ['16', '32', '48', '64', '128', '256', '512']) {
-    const dir = `${stage2}/usr/share/icons/hicolor/${size}x${size}/apps`
+  for (const size of ["16", "32", "48", "64", "128", "256", "512"]) {
+    const dir = `${stage2}/usr/share/icons/hicolor/${size}x${size}/apps`;
     $(await $.sh(`mkdir -p ${dir}`));
-    $(await $.sh(`cp resources/images/${appname}-icons/icon${size}.png ${dir}/${appname}.png`));
-  };
+    $(
+      await $.sh(
+        `cp resources/images/${appname}-icons/icon${size}.png ${dir}/${appname}.png`
+      )
+    );
+  }
 
   const launcherContents = `#!/bin/sh
 ${appname}-setup --prefer-launch -- "$@"
@@ -219,7 +227,7 @@ ${appname}-setup --prefer-launch -- "$@"
   await $.writeFile(`${stage2}/usr/bin/${appname}`, launcherContents);
   $(await $.sh(`chmod +x ${stage2}/usr/bin/${appname}`));
 
-  const url = `https://broth.itch.ovh/itch-setup/linux-${arch}/LATEST/unpacked/default`;
+  const url = `https://broth.itch.ovh/${appname}-setup/linux-${arch}/LATEST/unpacked/default`;
   $(await $.sh(`curl -L ${url} -o ${stage2}/usr/bin/${appname}-setup`));
   $(await $.sh(`chmod +x ${stage2}/usr/bin/${appname}-setup`));
 
@@ -233,8 +241,11 @@ Terminal=false
 Categories=Game;
 MimeType=x-scheme-handler/${appname}io;
 X-GNOME-Autostart-enabled=true
-Comment=Install and play itch.io games easily`
-  await $.writeFile(`${stage2}/usr/share/applications/io.itch.${appname}.desktop`, desktopContents);
+Comment=Install and play itch.io games easily`;
+  await $.writeFile(
+    `${stage2}/usr/share/applications/io.itch.${appname}.desktop`,
+    desktopContents
+  );
 }
 
 main();
