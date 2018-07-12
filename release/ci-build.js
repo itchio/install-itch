@@ -37,7 +37,7 @@ async function buildWindows() {
     const url = `https://broth.itch.ovh/${appname}-setup/windows-386/LATEST/unpacked/default`;
     const dir = `broth/install-${appname}/windows-386`;
     $(await $.sh(`mkdir -p ${dir}`));
-    $(await $.sh(`curl -L ${url} -o ${dir}/${appname}-setup.exe`));
+    $(await $.sh(`curl -f -L ${url} -o ${dir}/${appname}-setup.exe`));
   }
 
   $.say(`That's all! That was easy :)`);
@@ -53,7 +53,7 @@ async function buildDarwin() {
 
   for (const appname of ["itch", "kitch"]) {
     const url = `https://broth.itch.ovh/${appname}-setup/darwin-amd64/LATEST/unpacked/default`;
-    $(await $.sh(`curl -L ${url} -o staging/${appname}-setup`));
+    $(await $.sh(`curl -f -L ${url} -o staging/${appname}-setup`));
     $(await $.sh(`chmod +x staging/${appname}-setup`));
 
     const infoPlistContents = `<?xml version="1.0" encoding="UTF-8"?>
@@ -228,7 +228,7 @@ ${appname}-setup --prefer-launch -- "$@"
   $(await $.sh(`chmod +x ${stage2}/usr/bin/${appname}`));
 
   const url = `https://broth.itch.ovh/${appname}-setup/linux-${arch}/LATEST/unpacked/default`;
-  $(await $.sh(`curl -L ${url} -o ${stage2}/usr/bin/${appname}-setup`));
+  $(await $.sh(`curl -f -L ${url} -o ${stage2}/usr/bin/${appname}-setup`));
   $(await $.sh(`chmod +x ${stage2}/usr/bin/${appname}-setup`));
 
   const desktopContents = `[Desktop Entry]
