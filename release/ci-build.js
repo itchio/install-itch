@@ -91,7 +91,7 @@ async function buildDarwin() {
     $(await $.sh(`mkdir -p ${prefix}/Contents/Resources`));
     $(
       await $.sh(
-        `cp resources/${appname}.icns ${prefix}/Contents/Resources/${appname}-setup`
+        `cp resources/${appname}.icns ${prefix}/Contents/Resources/${appname}.icns`
       )
     );
     await $.writeFile(`${prefix}/Contents/Info.plist`, infoPlistContents);
