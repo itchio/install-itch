@@ -117,12 +117,12 @@ async function buildLinux() {
   const arch = process.env.CI_ARCH;
 
   for (const appname of ["itch", "kitch"]) {
-    const outFolder = `../../broth/install-${appname}/linux-portable-${arch}`;
+    const dist = `broth/install-${appname}/linux-portable-${arch}`;
 
     const url = `https://broth.itch.ovh/${appname}-setup/linux-${arch}/LATEST/unpacked/default`;
-    $(await $.sh(`mkdir -p ${outFolder}`));
-    $(await $.sh(`curl -f -L ${url} -o ${outFolder}/${appname}-setup`));
-    $(await $.sh(`chmod +x ${outFolder}/${appname}-setup`));
+    $(await $.sh(`mkdir -p ${dist}`));
+    $(await $.sh(`curl -f -L ${url} -o ${dist}/${appname}-setup`));
+    $(await $.sh(`chmod +x ${dist}/${appname}-setup`));
   }
 }
 
