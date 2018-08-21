@@ -120,6 +120,7 @@ async function buildLinux() {
     const outFolder = `../../broth/install-${appname}/linux-portable-${arch}`;
 
     const url = `https://broth.itch.ovh/${appname}-setup/linux-${arch}/LATEST/unpacked/default`;
+    $(await $.sh(`mkdir -p ${outFolder}`));
     $(await $.sh(`curl -f -L ${url} -o ${outFolder}/${appname}-setup`));
     $(await $.sh(`chmod +x ${outFolder}/${appname}-setup`));
   }
