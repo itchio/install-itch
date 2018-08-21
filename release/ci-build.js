@@ -23,6 +23,7 @@ async function main() {
   } else if (os === "darwin") {
     await buildDarwin();
   } else if (os === "linux") {
+    await buildLinux();
     await buildDeb();
   }
 }
@@ -110,6 +111,18 @@ async function buildDarwin() {
   }
 
   $.say(`That's all! that was easy :)`);
+}
+
+async function buildLinux() {
+  const arch = process.env.CI_ARCH;
+
+  for (const appname of ["itch", "kitch"]) {
+    const outFolder = `../../broth/install-${appname}/linux-portable-${arch}`;
+
+    const url = `https://broth.itch.ovh/${appname}-setup/linux-${arch}/LATEST/unpacked/default`;
+    $(await $.sh(`curl -f -L ${url} -o ${outFolder}/${appname}-setup`));
+    $(await $.sh(`chmod +x ${outFolder}/${appname}-setup`));
+  }
 }
 
 async function buildDeb() {
