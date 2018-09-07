@@ -79,6 +79,8 @@ async function buildDarwin() {
     <string>${version}</string>
     <key>CFBundleVersion</key>
     <string>${version}</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
   </dict>
 </plist>`;
 
