@@ -101,15 +101,20 @@ async function buildDarwin() {
 
     const dist = `broth/install-${appname}/darwin-amd64`;
     $(await $.sh(`mkdir -p ${dist}`));
-    const appBundle = `${dist}/Install ${appname}.app`;
+    const appBundleName = `Install ${appname}.app`;
+    const appBundle = `${dist}/${appBundleName}`;
+    const dmgName = `Install ${appname}.dmg`;
     $(await $.sh(`mv ${prefix} "${appBundle}"`));
-    $(
-      await $.sh(
-        `codesign --deep --force --verbose --sign "${signKey}" "${appBundle}"`
-      )
-    );
-    $(await $.sh(`codesign --verify -vvvv "${appBundle}"`));
-    $(await $.sh(`spctl -a -vvvv "${appBundle}"`));
+    await $.cd(dist, async () => {
+        const volname = `Install ${appname}`;
+        $(await $.sh(`hdiutil create -volname "${volname}" -srcfolder "${appBundleName}" -ov -format UDZO "${dmgName}"`))
+        $(await $.sh(`rm -rf "${appBundleName}"`));
+        $(await $.sh(
+          `codesign --deep --force --verbose --sign "${signKey}" "${dmgName}"`
+        ));
+        $(await $.sh(`codesign --verify -vvvv "${dmgName}"`));
+        $(await $.sh(`spctl -a -vvvv "${dmgName}"`));
+    });
   }
 
   $.say(`That's all! that was easy :)`);

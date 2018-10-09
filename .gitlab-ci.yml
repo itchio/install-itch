@@ -57,6 +57,7 @@ build:linux:amd64:
 
 deploy:
   stage: deploy
+  when: manual
   tags:
     - linux
   script:
