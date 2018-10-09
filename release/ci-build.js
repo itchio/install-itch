@@ -106,6 +106,12 @@ async function buildDarwin() {
     const dmgName = `Install ${appname}.dmg`;
     $(await $.sh(`mv ${prefix} "${appBundle}"`));
     await $.cd(dist, async () => {
+        $(await $.sh(
+          `codesign --deep --force --verbose --sign "${signKey}" "${appBundleName}"`
+        ));
+        $(await $.sh(`codesign --verify -vvvv "${appBundleName}"`));
+        $(await $.sh(`spctl -a -vvvv "${appBundleName}"`));
+
         const volname = `Install ${appname}`;
         $(await $.sh(`hdiutil create -volname "${volname}" -srcfolder "${appBundleName}" -ov -format UDZO "${dmgName}"`))
         $(await $.sh(`rm -rf "${appBundleName}"`));
@@ -113,7 +119,6 @@ async function buildDarwin() {
           `codesign --deep --force --verbose --sign "${signKey}" "${dmgName}"`
         ));
         $(await $.sh(`codesign --verify -vvvv "${dmgName}"`));
-        $(await $.sh(`spctl -a -vvvv "${dmgName}"`));
     });
   }
 
