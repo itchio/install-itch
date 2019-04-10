@@ -29,6 +29,8 @@ async function main() {
 }
 
 async function buildWindows() {
+  const arch = process.env.CI_ARCH;
+
   for (const appname of ["itch", "kitch"]) {
     const url = `https://broth.itch.ovh/${appname}-setup/windows-${arch}/LATEST/unpacked/default`;
     const dir = `broth/install-${appname}/windows-${arch}`;
