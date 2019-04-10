@@ -29,14 +29,9 @@ async function main() {
 }
 
 async function buildWindows() {
-  const arch = process.env.CI_ARCH;
-  if (arch != "386") {
-    throw new Error(`only know how to build windows 386 package, not ${arch}`);
-  }
-
   for (const appname of ["itch", "kitch"]) {
-    const url = `https://broth.itch.ovh/${appname}-setup/windows-386/LATEST/unpacked/default`;
-    const dir = `broth/install-${appname}/windows-386`;
+    const url = `https://broth.itch.ovh/${appname}-setup/windows-${arch}/LATEST/unpacked/default`;
+    const dir = `broth/install-${appname}/windows-${arch}`;
     $(await $.sh(`mkdir -p ${dir}`));
     $(await $.sh(`curl -f -L ${url} -o ${dir}/${appname}-setup.exe`));
   }
