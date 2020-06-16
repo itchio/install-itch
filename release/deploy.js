@@ -30,7 +30,7 @@ async function main() {
     });
   };
 
-  await cd("broth", async () => {
+  await cd("artifacts", async () => {
     const projects = readdirSync(".");
     for (const project of projects) {
       await pushProject(project);
