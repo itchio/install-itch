@@ -6,67 +6,46 @@ stages:
 build:windows:386:
   stage: build
   script:
-    - export CI_OS=windows
-    - export CI_ARCH=386
-    - release/ci-build.js
+    - npm ci --no-audit
+    - node release/build.js --os windows --arch 386
   tags:
     - windows
   artifacts:
     expire_in: 1 week
-    paths:
-      - broth
+    paths: ["artifacts"]
 
 build:windows:amd64:
   stage: build
   script:
-    - export CI_OS=windows
-    - export CI_ARCH=amd64
-    - release/ci-build.js
+    - npm ci --no-audit
+    - node release/build.js --os windows --arch amd64
   tags:
     - windows
   artifacts:
     expire_in: 1 week
-    paths:
-      - broth
+    paths: ["artifacts"]
 
 build:darwin:amd64:
   stage: build
   script:
-    - export CI_OS=darwin
-    - export CI_ARCH=amd64
-    - release/ci-build.js
+    - npm ci --no-audit
+    - node release/build.js --os darwin --arch amd64
   tags:
     - darwin
   artifacts:
     expire_in: 1 week
-    paths:
-      - broth
-
-build:linux:386:
-  stage: build
-  script:
-    - export CI_OS=linux
-    - export CI_ARCH=386
-    - release/ci-build.js
-  tags:
-    - linux
-  artifacts:
-    expire_in: 1 week
-    paths:
-      - broth
+    paths: ["artifacts"]
 
 build:linux:amd64:
   stage: build
   script:
-    - export CI_OS=linux
-    - export CI_ARCH=amd64
-    - release/ci-build.js
+    - npm ci --no-audit
+    - node release/build.js --os darwin --arch amd64
   tags:
     - linux
   artifacts:
     expire_in: 1 week
-    paths:
-      - broth
+    paths: ["artifacts"]
 
 deploy:
   stage: deploy
@@ -74,4 +53,5 @@ deploy:
   tags:
     - linux
   script:
-    - release/ci-deploy.js
+    - npm ci --no-audit
+    - node release/deploy.js
