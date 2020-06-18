@@ -122,6 +122,7 @@ async function buildDarwin(opts) {
     $(`curl -f -L ${url} -o staging/${appName}-setup`);
     $(`chmod +x staging/${appName}-setup`);
 
+    const bundleId = `io.${appName}-setup.mac`;
     const infoPlistContents = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -133,7 +134,7 @@ async function buildDarwin(opts) {
     <key>CFBundleIconFile</key>
     <string>${appName}.icns</string>
     <key>CFBundleIdentifier</key>
-    <string>io.${appName}-setup.mac</string>
+    <string>${bundleId}</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
@@ -180,6 +181,12 @@ async function buildDarwin(opts) {
       $(`rm -rf "${appBundleName}"`);
       $(`codesign --deep --force --verbose --sign "${signKey}" "${dmgName}"`);
       $(`codesign --verify -vvvv "${dmgName}"`);
+
+      let notarizeBin = `./node_modules/.bin/notarize-cli`;
+      // password is passed as an environment variable
+      $(
+        `${notarizeBin} --file "${dmgName}" --bundle-id "${bundleId}" --username "amoswenger@gmail.com"`
+      );
     });
   }
 

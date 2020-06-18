@@ -18,5 +18,8 @@
     "glob": "^7.1.6",
     "humanize-plus": "^1.8.2",
     "typescript": "^3.9.5"
+  },
+  "devDependencies": {
+    "notarize-cli": "^0.1.1"
   }
 }
