@@ -3,6 +3,7 @@
 
 const { $, setVerbose, chalk, info, cd } = require("@itchio/bob");
 const { writeFileSync } = require("fs");
+const { resolve } = require("path");
 
 const version = "25.0.0";
 const appNames = ["itch", "kitch"];
@@ -167,6 +168,9 @@ async function buildDarwin(opts) {
     const appBundle = `${dist}/${appBundleName}`;
     const dmgName = `Install ${appName}.dmg`;
     $(`mv ${prefix} "${appBundle}"`);
+
+    let notarizeBin = resolve(`./node_modules/.bin/notarize-cli`);
+
     await cd(dist, async () => {
       $(
         `codesign --deep --force --verbose --sign "${signKey}" "${appBundleName}"`
@@ -182,7 +186,6 @@ async function buildDarwin(opts) {
       $(`codesign --deep --force --verbose --sign "${signKey}" "${dmgName}"`);
       $(`codesign --verify -vvvv "${dmgName}"`);
 
-      let notarizeBin = `./node_modules/.bin/notarize-cli`;
       // password is passed as an environment variable
       $(
         `${notarizeBin} --file "${dmgName}" --bundle-id "${bundleId}" --username "amoswenger@gmail.com"`
