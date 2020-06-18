@@ -169,8 +169,6 @@ async function buildDarwin(opts) {
     const dmgName = `Install ${appName}.dmg`;
     $(`mv ${prefix} "${appBundle}"`);
 
-    let notarizeBin = resolve(`./node_modules/.bin/notarize-cli`);
-
     await cd(dist, async () => {
       $(
         `codesign --deep --force --verbose --sign "${signKey}" "${appBundleName}"`
@@ -186,10 +184,16 @@ async function buildDarwin(opts) {
       $(`codesign --deep --force --verbose --sign "${signKey}" "${dmgName}"`);
       $(`codesign --verify -vvvv "${dmgName}"`);
 
-      // password is passed as an environment variable
-      $(
-        `${notarizeBin} --file "${dmgName}" --bundle-id "${bundleId}" --username "amoswenger@gmail.com"`
-      );
+      console.log(`Notarizing...`);
+      require("debug").enable("electron-notarize"); // sic.
+      const { notarize } = require("electron-notarize-dmg");
+      await notarize({
+        appBundleId: bundleId,
+        dmgPath: dmgName,
+        appleId: "amoswenger@gmail.com",
+        appleIdPassword: process.env.APPLE_ID_PASSWORD || "",
+        staple: true,
+      });
     });
   }
 

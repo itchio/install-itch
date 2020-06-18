@@ -20,6 +20,7 @@
     "typescript": "^3.9.5"
   },
   "devDependencies": {
-    "notarize-cli": "^0.1.1"
+    "@types/debug": "^4.1.5",
+    "electron-notarize-dmg": "^1.0.0"
   }
 }
