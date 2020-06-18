@@ -168,10 +168,11 @@ async function buildDarwin(opts) {
     const appBundle = `${dist}/${appBundleName}`;
     const dmgName = `Install ${appName}.dmg`;
     $(`mv ${prefix} "${appBundle}"`);
+    const entitlementsPath = resolve(`./entitlements.plist`);
 
     await cd(dist, async () => {
       $(
-        `codesign --deep --force --verbose --sign "${signKey}" "${appBundleName}"`
+        `codesign --options runtime --timestamp --entitlements "${entitlementsPath}" --deep --force --verbose --sign "${signKey}" "${appBundleName}"`
       );
       $(`codesign --verify -vvvv "${appBundleName}"`);
       $(`spctl -a -vvvv "${appBundleName}"`);
@@ -184,16 +185,20 @@ async function buildDarwin(opts) {
       $(`codesign --deep --force --verbose --sign "${signKey}" "${dmgName}"`);
       $(`codesign --verify -vvvv "${dmgName}"`);
 
-      console.log(`Notarizing...`);
-      require("debug").enable("electron-notarize"); // sic.
-      const { notarize } = require("electron-notarize-dmg");
-      await notarize({
-        appBundleId: bundleId,
-        dmgPath: dmgName,
-        appleId: "amoswenger@gmail.com",
-        appleIdPassword: process.env.APPLE_ID_PASSWORD || "",
-        staple: true,
-      });
+      if (process.env.SKIP_NOTARIZE) {
+        console.log(`$SKIP_NOTARIZE is set, skipping notarization...`); 
+      } else {
+        console.log(`Notarizing...`);
+        require("debug").enable("electron-notarize"); // sic.
+        const { notarize } = require("electron-notarize-dmg");
+        await notarize({
+          appBundleId: bundleId,
+          dmgPath: dmgName,
+          appleId: "amoswenger@gmail.com",
+          appleIdPassword: process.env.APPLE_ID_PASSWORD || "",
+          staple: true,
+        });
+      }
     });
   }
 
