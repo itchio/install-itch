@@ -197,8 +197,6 @@ async function buildDarwin(opts) {
           appleIdPassword: process.env.APPLE_ID_PASSWORD || "",
           staple: true,
         });
-
-        $(`spctl -a -vvvv "${appBundleName}"`); // this needs both notarize and code sign to pass
       }
     });
   }
