@@ -175,7 +175,6 @@ async function buildDarwin(opts) {
         `codesign --options runtime --timestamp --entitlements "${entitlementsPath}" --deep --force --verbose --sign "${signKey}" "${appBundleName}"`
       );
       $(`codesign --verify -vvvv "${appBundleName}"`);
-      $(`spctl -a -vvvv "${appBundleName}"`);
 
       const volname = `Install ${appName}`;
       $(
@@ -198,6 +197,8 @@ async function buildDarwin(opts) {
           appleIdPassword: process.env.APPLE_ID_PASSWORD || "",
           staple: true,
         });
+
+        $(`spctl -a -vvvv "${appBundleName}"`); // this needs both notarize and code sign to pass
       }
     });
   }
