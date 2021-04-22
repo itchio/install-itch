@@ -20,7 +20,7 @@ async function main() {
    * @param {string} project
    */
   const pushProject = async (project) => {
-    const projectPage = `fasterthanlime/${project}`;
+    const projectPage = `itchio/${project}`;
     await cd(project, async () => {
       const osarches = readdirSync(".");
       for (const osarch of osarches) {
