@@ -116,7 +116,7 @@ async function buildDarwin(opts) {
     );
   }
 
-  const signKey = "Developer ID Application: Amos Wenger (B2N6FSRTPV)";
+  const signKey = "Developer ID Application: itch corp. (AK2D34UDP2)";
 
   for (const appName of appNames) {
     const url = `https://broth.itch.ovh/${appName}-setup/darwin-amd64/LATEST/unpacked/default`;
@@ -194,7 +194,7 @@ async function buildDarwin(opts) {
         await notarize({
           appBundleId: bundleId,
           dmgPath: dmgName,
-          appleId: "amoswenger@gmail.com",
+          appleId: "leafot@gmail.com",
           appleIdPassword: process.env.APPLE_ID_PASSWORD || "",
           staple: true,
         });
