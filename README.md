@@ -4,8 +4,8 @@ Generates installers from itch-setup for Windows, macOS and Linux.
 
 Deploys to:
 
-  * https://fasterthanlime.itch.io/install-itch (stable)
-  * https://fasterthanlime.itch.io/install-kitch (beta)
+  * https://itchio.itch.io/install-itch (stable)
+  * https://itchio.itch.io/install-kitch (beta)
 
 ### Windows
 
