@@ -185,18 +185,16 @@ async function buildDarwin(opts) {
       $(`codesign --verify -vvvv "${dmgName}"`);
 
       if (process.env.SKIP_NOTARIZE) {
-        console.log(`$SKIP_NOTARIZE is set, skipping notarization...`); 
+        console.log(`$SKIP_NOTARIZE is set, skipping notarization...`);
       } else {
         console.log(`Notarizing...`);
-        require("debug").enable("electron-notarize"); // sic.
-        const { notarize } = require("electron-notarize-dmg");
-        await notarize({
-          appBundleId: bundleId,
-          dmgPath: dmgName,
-          appleId: "leafot@gmail.com",
-          appleIdPassword: process.env.APPLE_ID_PASSWORD || "",
-          staple: true,
-        });
+        // xcrun notarytool submit <path-to-your-dmg> --apple-id <your-apple-id> --password <app-specific-password> --team-id <team-id> --wait
+        // xcrun stapler staple <path-to-your-dmg>
+        // xcrun stapler validate <path-to-your-dmg>
+
+        $(`xcrun notarytool submit "${dmgName}" --apple-id "${process.env.APPLE_ID}" --password "${process.env.APPLE_ID_PASSWORD}" --team-id "${process.env.APPLE_TEAM_ID}" --wait`);
+        $(`xcrun stapler staple "${dmgName}"`);
+        $(`xcrun stapler validate "${dmgName}"`)
       }
     });
   }
