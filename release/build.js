@@ -95,7 +95,7 @@ async function main(args) {
  */
 async function buildWindows(opts) {
   for (const appName of appNames) {
-    const url = `https://broth.itch.ovh/${appName}-setup/windows-${opts.arch}/LATEST/unpacked/default`;
+    const url = `https://broth.itch.zone/${appName}-setup/windows-${opts.arch}/LATEST/unpacked/default`;
     const dir = `artifacts/install-${appName}/windows-${opts.arch}`;
     $(`mkdir -p ${dir}`);
     $(`curl -f -L ${url} -o ${dir}/${appName}-setup.exe`);
@@ -119,7 +119,7 @@ async function buildDarwin(opts) {
   const signKey = "Developer ID Application: itch corp. (AK2D34UDP2)";
 
   for (const appName of appNames) {
-    const url = `https://broth.itch.ovh/${appName}-setup/darwin-amd64/LATEST/unpacked/default`;
+    const url = `https://broth.itch.zone/${appName}-setup/darwin-amd64/LATEST/unpacked/default`;
     $(`curl -f -L ${url} -o staging/${appName}-setup`);
     $(`chmod +x staging/${appName}-setup`);
 
@@ -213,7 +213,7 @@ async function buildLinux(opts) {
   for (const appName of appNames) {
     const dist = `artifacts/install-${appName}/linux-portable-${arch}`;
 
-    const url = `https://broth.itch.ovh/${appName}-setup/linux-${arch}/LATEST/unpacked/default`;
+    const url = `https://broth.itch.zone/${appName}-setup/linux-${arch}/LATEST/unpacked/default`;
     $(`mkdir -p ${dist}`);
     $(`curl -f -L ${url} -o ${dist}/${appName}-setup`);
     $(`chmod +x ${dist}/${appName}-setup`);

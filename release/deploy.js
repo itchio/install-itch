@@ -10,7 +10,7 @@ async function main() {
   $(`mkdir -p "${toolsDir}"`);
   await cd(toolsDir, async () => {
     $(
-      `curl -sLo butler.zip "https://broth.itch.ovh/butler/linux-amd64-head/LATEST/.zip"`
+      `curl -sLo butler.zip "https://broth.itch.zone/butler/linux-amd64-head/LATEST/.zip"`
     );
     $(`unzip butler.zip`);
   });

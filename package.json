@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@git.itch.ovh:itchio/install-itch.git"
+    "url": "git@github.com:itchio/install-itch.git"
   },
   "author": "",
   "license": "ISC",
