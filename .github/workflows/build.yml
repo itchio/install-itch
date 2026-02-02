@@ -5,6 +5,14 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      app:
+        description: 'App to build/deploy'
+        type: choice
+        options:
+          - both
+          - itch
+          - kitch
+        default: both
       deploy_windows_amd64:
         description: 'Deploy Windows 64-bit'
         type: boolean
@@ -52,7 +60,7 @@ jobs:
 
       - name: Build
         run: |
-          node release/build.js --os ${{ matrix.build_os }} ${{ matrix.build_arch && format('--arch {0}', matrix.build_arch) || '' }}
+          node release/build.js --os ${{ matrix.build_os }} ${{ matrix.build_arch && format('--arch {0}', matrix.build_arch) || '' }} ${{ inputs.app && inputs.app != 'both' && format('--app {0}', inputs.app) || '' }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -100,6 +108,7 @@ jobs:
           rm $RUNNER_TEMP/certificate.p12
 
       - name: Sign and notarize itch
+        if: inputs.app == 'both' || inputs.app == 'itch'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
@@ -155,6 +164,7 @@ jobs:
           echo "=== ${APP_NAME} signed and notarized ==="
 
       - name: Sign and notarize kitch
+        if: inputs.app == 'both' || inputs.app == 'kitch'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}

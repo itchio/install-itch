@@ -5,7 +5,7 @@ const { $, setVerbose, chalk, info } = require("@itchio/bob");
 const { writeFileSync } = require("fs");
 
 const version = "25.0.0";
-const appNames = ["itch", "kitch"];
+const allAppNames = ["itch", "kitch"];
 
 /**
  * @typedef OS
@@ -33,6 +33,8 @@ async function main(args) {
   let os;
   /** @type {Arch | undefined} */
   let arch;
+  /** @type {string | undefined} */
+  let appFilter;
 
   for (let i = 0; i < args.length; i++) {
     let arg = args[i];
@@ -45,7 +47,7 @@ async function main(args) {
         continue;
       }
 
-      if (k === "os" || k === "arch") {
+      if (k === "os" || k === "arch" || k === "app") {
         i++;
         let v = args[i];
 
@@ -61,10 +63,19 @@ async function main(args) {
           } else {
             throw new Error(`Unsupported arch ${chalk.yellow(v)}`);
           }
+        } else if (k === "app") {
+          if (v === "itch" || v === "kitch") {
+            appFilter = v;
+          } else {
+            throw new Error(`Unsupported app ${chalk.yellow(v)}, must be "itch" or "kitch"`);
+          }
         }
       }
     }
   }
+
+  // Filter app names if --app is specified
+  const appNames = appFilter ? [appFilter] : allAppNames;
 
   if (!os) {
     throw new Error(`${chalk.yellow("--os")} must be specified`);
@@ -82,18 +93,19 @@ async function main(args) {
 
   switch (opts.os) {
     case "windows":
-      return await buildWindows(opts);
+      return await buildWindows(opts, appNames);
     case "darwin":
-      return await buildDarwin();
+      return await buildDarwin(appNames);
     case "linux":
-      return await buildLinux(opts);
+      return await buildLinux(opts, appNames);
   }
 }
 
 /**
  * @param {Opts} opts
+ * @param {string[]} appNames
  */
-async function buildWindows(opts) {
+async function buildWindows(opts, appNames) {
   for (const appName of appNames) {
     const url = `https://broth.itch.zone/${appName}-setup/windows-${opts.arch}/LATEST/unpacked/default`;
     const dir = `artifacts/install-${appName}/windows-${opts.arch}`;
@@ -107,8 +119,9 @@ async function buildWindows(opts) {
 /**
  * Builds universal macOS binary (Intel + ARM64) and creates unsigned .app bundle.
  * Code signing, DMG creation, and notarization are handled by GitHub Actions.
+ * @param {string[]} appNames
  */
-async function buildDarwin() {
+async function buildDarwin(appNames) {
   for (const appName of appNames) {
     // Download both architectures from broth
     const amd64Url = `https://broth.itch.zone/${appName}-setup/darwin-amd64/LATEST/unpacked/default`;
@@ -183,8 +196,9 @@ async function buildDarwin() {
 
 /**
  * @param {Opts} opts
+ * @param {string[]} appNames
  */
-async function buildLinux(opts) {
+async function buildLinux(opts, appNames) {
   const arch = opts.arch;
 
   for (const appName of appNames) {
