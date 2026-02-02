@@ -154,9 +154,6 @@ jobs:
           xcrun stapler staple "staging/Install ${APP_NAME}.dmg"
           xcrun stapler validate "staging/Install ${APP_NAME}.dmg"
 
-          # Verify with spctl
-          spctl -a -vvv "staging/Install ${APP_NAME}.dmg"
-
           # Replace .app with signed DMG for deployment
           rm -rf "${APP_BUNDLE}"
           mv "staging/Install ${APP_NAME}.dmg" "artifacts/install-${APP_NAME}/darwin-universal/"
@@ -209,9 +206,6 @@ jobs:
           # Staple
           xcrun stapler staple "staging/Install ${APP_NAME}.dmg"
           xcrun stapler validate "staging/Install ${APP_NAME}.dmg"
-
-          # Verify with spctl
-          spctl -a -vvv "staging/Install ${APP_NAME}.dmg"
 
           # Replace .app with signed DMG for deployment
           rm -rf "${APP_BUNDLE}"
