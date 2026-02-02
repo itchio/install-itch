@@ -113,52 +113,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          APP_NAME="itch"
-          SIGN_KEY="Developer ID Application: itch corp. (AK2D34UDP2)"
-          APP_BUNDLE="artifacts/install-${APP_NAME}/darwin-universal/Install ${APP_NAME}.app"
-          ENTITLEMENTS_PATH="./entitlements.plist"
-
-          echo "=== Signing ${APP_NAME} ==="
-
-          # Sign the binary inside the .app
-          codesign --options runtime --timestamp --entitlements "$ENTITLEMENTS_PATH" \
-            --force --verbose --sign "$SIGN_KEY" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}-setup"
-
-          # Sign the .app bundle
-          codesign --options runtime --timestamp --entitlements "$ENTITLEMENTS_PATH" \
-            --deep --force --verbose --sign "$SIGN_KEY" "${APP_BUNDLE}"
-
-          # Verify signature
-          codesign --verify -vvvv "${APP_BUNDLE}"
-
-          # Create DMG
-          mkdir -p staging
-          hdiutil create -volname "Install ${APP_NAME}" \
-            -srcfolder "${APP_BUNDLE}" \
-            -ov -format UDZO "staging/Install ${APP_NAME}.dmg"
-
-          # Sign the DMG
-          codesign --force --verbose --sign "$SIGN_KEY" "staging/Install ${APP_NAME}.dmg"
-          codesign --verify -vvvv "staging/Install ${APP_NAME}.dmg"
-
-          # Notarize
-          echo "Notarizing ${APP_NAME}..."
-          xcrun notarytool submit "staging/Install ${APP_NAME}.dmg" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
-            --wait
-
-          # Staple
-          xcrun stapler staple "staging/Install ${APP_NAME}.dmg"
-          xcrun stapler validate "staging/Install ${APP_NAME}.dmg"
-
-          # Replace .app with signed DMG for deployment
-          rm -rf "${APP_BUNDLE}"
-          mv "staging/Install ${APP_NAME}.dmg" "artifacts/install-${APP_NAME}/darwin-universal/"
-
-          echo "=== ${APP_NAME} signed and notarized ==="
+        run: ./release/sign-darwin.sh itch
 
       - name: Sign and notarize kitch
         if: inputs.app == 'both' || inputs.app == 'kitch'
@@ -166,52 +121,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          APP_NAME="kitch"
-          SIGN_KEY="Developer ID Application: itch corp. (AK2D34UDP2)"
-          APP_BUNDLE="artifacts/install-${APP_NAME}/darwin-universal/Install ${APP_NAME}.app"
-          ENTITLEMENTS_PATH="./entitlements.plist"
-
-          echo "=== Signing ${APP_NAME} ==="
-
-          # Sign the binary inside the .app
-          codesign --options runtime --timestamp --entitlements "$ENTITLEMENTS_PATH" \
-            --force --verbose --sign "$SIGN_KEY" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}-setup"
-
-          # Sign the .app bundle
-          codesign --options runtime --timestamp --entitlements "$ENTITLEMENTS_PATH" \
-            --deep --force --verbose --sign "$SIGN_KEY" "${APP_BUNDLE}"
-
-          # Verify signature
-          codesign --verify -vvvv "${APP_BUNDLE}"
-
-          # Create DMG
-          mkdir -p staging
-          hdiutil create -volname "Install ${APP_NAME}" \
-            -srcfolder "${APP_BUNDLE}" \
-            -ov -format UDZO "staging/Install ${APP_NAME}.dmg"
-
-          # Sign the DMG
-          codesign --force --verbose --sign "$SIGN_KEY" "staging/Install ${APP_NAME}.dmg"
-          codesign --verify -vvvv "staging/Install ${APP_NAME}.dmg"
-
-          # Notarize
-          echo "Notarizing ${APP_NAME}..."
-          xcrun notarytool submit "staging/Install ${APP_NAME}.dmg" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
-            --wait
-
-          # Staple
-          xcrun stapler staple "staging/Install ${APP_NAME}.dmg"
-          xcrun stapler validate "staging/Install ${APP_NAME}.dmg"
-
-          # Replace .app with signed DMG for deployment
-          rm -rf "${APP_BUNDLE}"
-          mv "staging/Install ${APP_NAME}.dmg" "artifacts/install-${APP_NAME}/darwin-universal/"
-
-          echo "=== ${APP_NAME} signed and notarized ==="
+        run: ./release/sign-darwin.sh kitch
 
       - name: Upload signed darwin artifacts
         uses: actions/upload-artifact@v4
