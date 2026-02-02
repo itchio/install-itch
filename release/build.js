@@ -1,9 +1,8 @@
 //@ts-check
 "use strict";
 
-const { $, setVerbose, chalk, info, cd } = require("@itchio/bob");
+const { $, setVerbose, chalk, info } = require("@itchio/bob");
 const { writeFileSync } = require("fs");
-const { resolve } = require("path");
 
 const version = "25.0.0";
 const appNames = ["itch", "kitch"];
@@ -22,7 +21,7 @@ const appNames = ["itch", "kitch"];
  * @typedef Opts
  * @type {{
  *  os: OS,
- *  arch: Arch,
+ *  arch?: Arch,
  * }}
  */
 
@@ -70,8 +69,9 @@ async function main(args) {
   if (!os) {
     throw new Error(`${chalk.yellow("--os")} must be specified`);
   }
-  if (!arch) {
-    throw new Error(`${chalk.yellow("--arch")} must be specified`);
+  // arch is required for windows and linux, but not for darwin (which builds universal)
+  if (os !== "darwin" && !arch) {
+    throw new Error(`${chalk.yellow("--arch")} must be specified for ${os}`);
   }
 
   /** @type {Opts} */
@@ -84,7 +84,7 @@ async function main(args) {
     case "windows":
       return await buildWindows(opts);
     case "darwin":
-      return await buildDarwin(opts);
+      return await buildDarwin();
     case "linux":
       return await buildLinux(opts);
   }
@@ -105,23 +105,28 @@ async function buildWindows(opts) {
 }
 
 /**
- * @param {Opts} opts
+ * Builds universal macOS binary (Intel + ARM64) and creates unsigned .app bundle.
+ * Code signing, DMG creation, and notarization are handled by GitHub Actions.
  */
-async function buildDarwin(opts) {
-  if (opts.arch != "amd64") {
-    throw new Error(
-      `Only know how to build for darwin amd64 arch, not ${chalk.yellow(
-        opts.arch
-      )}`
-    );
-  }
-
-  const signKey = "Developer ID Application: itch corp. (AK2D34UDP2)";
-
+async function buildDarwin() {
   for (const appName of appNames) {
-    const url = `https://broth.itch.zone/${appName}-setup/darwin-amd64/LATEST/unpacked/default`;
-    $(`curl -f -L ${url} -o staging/${appName}-setup`);
+    // Download both architectures from broth
+    const amd64Url = `https://broth.itch.zone/${appName}-setup/darwin-amd64/LATEST/unpacked/default`;
+    const arm64Url = `https://broth.itch.zone/${appName}-setup/darwin-arm64/LATEST/unpacked/default`;
+
+    info(`Downloading ${appName}-setup for darwin-amd64...`);
+    $(`curl -f -L "${amd64Url}" -o staging/${appName}-setup-amd64`);
+
+    info(`Downloading ${appName}-setup for darwin-arm64...`);
+    $(`curl -f -L "${arm64Url}" -o staging/${appName}-setup-arm64`);
+
+    // Create universal binary with lipo
+    info(`Creating universal binary for ${appName}-setup...`);
+    $(`lipo -create staging/${appName}-setup-amd64 staging/${appName}-setup-arm64 -output staging/${appName}-setup`);
     $(`chmod +x staging/${appName}-setup`);
+
+    // Verify the universal binary
+    $(`lipo -info staging/${appName}-setup`);
 
     const bundleId = `io.${appName}-setup.mac`;
     const infoPlistContents = `<?xml version="1.0" encoding="UTF-8"?>
@@ -151,6 +156,7 @@ async function buildDarwin(opts) {
   </dict>
 </plist>`;
 
+    // Create .app bundle structure
     const prefix = `staging/install-${appName}-app`;
     $(`mkdir -p ${prefix}/Contents/MacOS`);
     $(`cp staging/${appName}-setup ${prefix}/Contents/MacOS/${appName}-setup`);
@@ -162,44 +168,17 @@ async function buildDarwin(opts) {
       encoding: "utf-8",
     });
 
-    const dist = `artifacts/install-${appName}/darwin-amd64`;
+    // Output unsigned .app bundle to darwin-universal directory
+    const dist = `artifacts/install-${appName}/darwin-universal`;
     $(`mkdir -p ${dist}`);
     const appBundleName = `Install ${appName}.app`;
     const appBundle = `${dist}/${appBundleName}`;
-    const dmgName = `Install ${appName}.dmg`;
     $(`mv ${prefix} "${appBundle}"`);
-    const entitlementsPath = resolve(`./entitlements.plist`);
 
-    await cd(dist, async () => {
-      $(
-        `codesign --options runtime --timestamp --entitlements "${entitlementsPath}" --deep --force --verbose --sign "${signKey}" "${appBundleName}"`
-      );
-      $(`codesign --verify -vvvv "${appBundleName}"`);
-
-      const volname = `Install ${appName}`;
-      $(
-        `hdiutil create -volname "${volname}" -srcfolder "${appBundleName}" -ov -format UDZO "${dmgName}"`
-      );
-      $(`rm -rf "${appBundleName}"`);
-      $(`codesign --deep --force --verbose --sign "${signKey}" "${dmgName}"`);
-      $(`codesign --verify -vvvv "${dmgName}"`);
-
-      if (process.env.SKIP_NOTARIZE) {
-        console.log(`$SKIP_NOTARIZE is set, skipping notarization...`);
-      } else {
-        console.log(`Notarizing...`);
-        // xcrun notarytool submit <path-to-your-dmg> --apple-id <your-apple-id> --password <app-specific-password> --team-id <team-id> --wait
-        // xcrun stapler staple <path-to-your-dmg>
-        // xcrun stapler validate <path-to-your-dmg>
-
-        $(`xcrun notarytool submit "${dmgName}" --apple-id "${process.env.APPLE_ID}" --password "${process.env.APPLE_ID_PASSWORD}" --team-id "${process.env.APPLE_TEAM_ID}" --wait`);
-        $(`xcrun stapler staple "${dmgName}"`);
-        $(`xcrun stapler validate "${dmgName}"`)
-      }
-    });
+    info(`Created unsigned app bundle: ${appBundle}`);
   }
 
-  info(`That's all! that was easy :)`);
+  info(`That's all! Unsigned .app bundles created for signing by GitHub Actions.`);
 }
 
 /**

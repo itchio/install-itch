@@ -1,0 +1,268 @@
+name: Build and Deploy
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      deploy_windows_amd64:
+        description: 'Deploy Windows 64-bit'
+        type: boolean
+        default: true
+      deploy_darwin:
+        description: 'Deploy macOS (universal)'
+        type: boolean
+        default: true
+      deploy_linux_amd64:
+        description: 'Deploy Linux'
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-amd64
+            os: windows-latest
+            build_os: windows
+            build_arch: amd64
+          - name: darwin
+            os: macos-latest
+            build_os: darwin
+          - name: linux-amd64
+            os: ubuntu-latest
+            build_os: linux
+            build_arch: amd64
+
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit
+
+      - name: Build
+        run: |
+          node release/build.js --os ${{ matrix.build_os }} ${{ matrix.build_arch && format('--arch {0}', matrix.build_arch) || '' }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.name }}
+          path: artifacts/
+          retention-days: 7
+
+  sign-darwin:
+    name: Sign macOS
+    needs: build
+    runs-on: macos-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy_darwin
+    environment: signing-macos
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download darwin artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-darwin
+          path: artifacts/
+
+      - name: Import signing certificate
+        env:
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          echo "$APPLE_CERTIFICATE_P12_BASE64" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+          # Clean up
+          rm $RUNNER_TEMP/certificate.p12
+
+      - name: Sign and notarize itch
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          APP_NAME="itch"
+          SIGN_KEY="Developer ID Application: itch corp. (AK2D34UDP2)"
+          APP_BUNDLE="artifacts/install-${APP_NAME}/darwin-universal/Install ${APP_NAME}.app"
+          ENTITLEMENTS_PATH="./entitlements.plist"
+
+          echo "=== Signing ${APP_NAME} ==="
+
+          # Sign the binary inside the .app
+          codesign --options runtime --timestamp --entitlements "$ENTITLEMENTS_PATH" \
+            --force --verbose --sign "$SIGN_KEY" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}-setup"
+
+          # Sign the .app bundle
+          codesign --options runtime --timestamp --entitlements "$ENTITLEMENTS_PATH" \
+            --deep --force --verbose --sign "$SIGN_KEY" "${APP_BUNDLE}"
+
+          # Verify signature
+          codesign --verify -vvvv "${APP_BUNDLE}"
+
+          # Create DMG
+          mkdir -p staging
+          hdiutil create -volname "Install ${APP_NAME}" \
+            -srcfolder "${APP_BUNDLE}" \
+            -ov -format UDZO "staging/Install ${APP_NAME}.dmg"
+
+          # Sign the DMG
+          codesign --force --verbose --sign "$SIGN_KEY" "staging/Install ${APP_NAME}.dmg"
+          codesign --verify -vvvv "staging/Install ${APP_NAME}.dmg"
+
+          # Notarize
+          echo "Notarizing ${APP_NAME}..."
+          xcrun notarytool submit "staging/Install ${APP_NAME}.dmg" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          # Staple
+          xcrun stapler staple "staging/Install ${APP_NAME}.dmg"
+          xcrun stapler validate "staging/Install ${APP_NAME}.dmg"
+
+          # Verify with spctl
+          spctl -a -vvv "staging/Install ${APP_NAME}.dmg"
+
+          # Replace .app with signed DMG for deployment
+          rm -rf "${APP_BUNDLE}"
+          mv "staging/Install ${APP_NAME}.dmg" "artifacts/install-${APP_NAME}/darwin-universal/"
+
+          echo "=== ${APP_NAME} signed and notarized ==="
+
+      - name: Sign and notarize kitch
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          APP_NAME="kitch"
+          SIGN_KEY="Developer ID Application: itch corp. (AK2D34UDP2)"
+          APP_BUNDLE="artifacts/install-${APP_NAME}/darwin-universal/Install ${APP_NAME}.app"
+          ENTITLEMENTS_PATH="./entitlements.plist"
+
+          echo "=== Signing ${APP_NAME} ==="
+
+          # Sign the binary inside the .app
+          codesign --options runtime --timestamp --entitlements "$ENTITLEMENTS_PATH" \
+            --force --verbose --sign "$SIGN_KEY" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}-setup"
+
+          # Sign the .app bundle
+          codesign --options runtime --timestamp --entitlements "$ENTITLEMENTS_PATH" \
+            --deep --force --verbose --sign "$SIGN_KEY" "${APP_BUNDLE}"
+
+          # Verify signature
+          codesign --verify -vvvv "${APP_BUNDLE}"
+
+          # Create DMG
+          mkdir -p staging
+          hdiutil create -volname "Install ${APP_NAME}" \
+            -srcfolder "${APP_BUNDLE}" \
+            -ov -format UDZO "staging/Install ${APP_NAME}.dmg"
+
+          # Sign the DMG
+          codesign --force --verbose --sign "$SIGN_KEY" "staging/Install ${APP_NAME}.dmg"
+          codesign --verify -vvvv "staging/Install ${APP_NAME}.dmg"
+
+          # Notarize
+          echo "Notarizing ${APP_NAME}..."
+          xcrun notarytool submit "staging/Install ${APP_NAME}.dmg" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          # Staple
+          xcrun stapler staple "staging/Install ${APP_NAME}.dmg"
+          xcrun stapler validate "staging/Install ${APP_NAME}.dmg"
+
+          # Verify with spctl
+          spctl -a -vvv "staging/Install ${APP_NAME}.dmg"
+
+          # Replace .app with signed DMG for deployment
+          rm -rf "${APP_BUNDLE}"
+          mv "staging/Install ${APP_NAME}.dmg" "artifacts/install-${APP_NAME}/darwin-universal/"
+
+          echo "=== ${APP_NAME} signed and notarized ==="
+
+      - name: Upload signed darwin artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-darwin
+          path: artifacts/
+          retention-days: 7
+
+  deploy:
+    name: Deploy
+    needs: [build, sign-darwin]
+    runs-on: ubuntu-latest
+    if: |
+      always() &&
+      github.event_name == 'workflow_dispatch' &&
+      needs.build.result == 'success' &&
+      (needs.sign-darwin.result == 'success' || needs.sign-darwin.result == 'skipped')
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit
+
+      - name: Download windows artifacts
+        if: inputs.deploy_windows_amd64
+        uses: actions/download-artifact@v4
+        with:
+          name: build-windows-amd64
+          path: artifacts/
+
+      - name: Download linux artifacts
+        if: inputs.deploy_linux_amd64
+        uses: actions/download-artifact@v4
+        with:
+          name: build-linux-amd64
+          path: artifacts/
+
+      - name: Download signed darwin artifacts
+        if: inputs.deploy_darwin
+        uses: actions/download-artifact@v4
+        with:
+          name: signed-darwin
+          path: artifacts/
+
+      - name: List artifacts
+        run: find artifacts -type f | head -50
+
+      - name: Deploy
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: node release/deploy.js
