@@ -106,11 +106,14 @@ async function main(args) {
  * @param {string[]} appNames
  */
 async function buildWindows(opts, appNames) {
+  // Download itch-setup once (kitch-setup is retired, same executable)
+  const url = `https://broth.itch.zone/itch-setup/windows-${opts.arch}/LATEST/unpacked/default`;
+  $(`curl -f -L ${url} -o staging/itch-setup.exe`);
+
   for (const appName of appNames) {
-    const url = `https://broth.itch.zone/${appName}-setup/windows-${opts.arch}/LATEST/unpacked/default`;
     const dir = `artifacts/install-${appName}/windows-${opts.arch}`;
     $(`mkdir -p ${dir}`);
-    $(`curl -f -L ${url} -o ${dir}/${appName}-setup.exe`);
+    $(`cp staging/itch-setup.exe ${dir}/${appName}-setup.exe`);
   }
 
   info(`That's all! That was easy :)`);
@@ -122,25 +125,23 @@ async function buildWindows(opts, appNames) {
  * @param {string[]} appNames
  */
 async function buildDarwin(appNames) {
+  // Download itch-setup binaries once (kitch-setup is retired, same executable)
+  const amd64Url = `https://broth.itch.zone/itch-setup/darwin-amd64/LATEST/unpacked/default`;
+  const arm64Url = `https://broth.itch.zone/itch-setup/darwin-arm64/LATEST/unpacked/default`;
+
+  info(`Downloading itch-setup for darwin-amd64...`);
+  $(`curl -f -L "${amd64Url}" -o staging/itch-setup-amd64`);
+
+  info(`Downloading itch-setup for darwin-arm64...`);
+  $(`curl -f -L "${arm64Url}" -o staging/itch-setup-arm64`);
+
+  // Create universal binary once
+  info(`Creating universal binary for itch-setup...`);
+  $(`lipo -create staging/itch-setup-amd64 staging/itch-setup-arm64 -output staging/itch-setup`);
+  $(`chmod +x staging/itch-setup`);
+  $(`lipo -info staging/itch-setup`);
+
   for (const appName of appNames) {
-    // Download both architectures from broth
-    const amd64Url = `https://broth.itch.zone/${appName}-setup/darwin-amd64/LATEST/unpacked/default`;
-    const arm64Url = `https://broth.itch.zone/${appName}-setup/darwin-arm64/LATEST/unpacked/default`;
-
-    info(`Downloading ${appName}-setup for darwin-amd64...`);
-    $(`curl -f -L "${amd64Url}" -o staging/${appName}-setup-amd64`);
-
-    info(`Downloading ${appName}-setup for darwin-arm64...`);
-    $(`curl -f -L "${arm64Url}" -o staging/${appName}-setup-arm64`);
-
-    // Create universal binary with lipo
-    info(`Creating universal binary for ${appName}-setup...`);
-    $(`lipo -create staging/${appName}-setup-amd64 staging/${appName}-setup-arm64 -output staging/${appName}-setup`);
-    $(`chmod +x staging/${appName}-setup`);
-
-    // Verify the universal binary
-    $(`lipo -info staging/${appName}-setup`);
-
     const bundleId = `io.${appName}-setup.mac`;
     const infoPlistContents = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -169,10 +170,10 @@ async function buildDarwin(appNames) {
   </dict>
 </plist>`;
 
-    // Create .app bundle structure
+    // Create .app bundle structure (copy universal binary, renamed for this app)
     const prefix = `staging/install-${appName}-app`;
     $(`mkdir -p ${prefix}/Contents/MacOS`);
-    $(`cp staging/${appName}-setup ${prefix}/Contents/MacOS/${appName}-setup`);
+    $(`cp staging/itch-setup ${prefix}/Contents/MacOS/${appName}-setup`);
     $(`mkdir -p ${prefix}/Contents/Resources`);
     $(
       `cp resources/${appName}.icns ${prefix}/Contents/Resources/${appName}.icns`
@@ -201,13 +202,15 @@ async function buildDarwin(appNames) {
 async function buildLinux(opts, appNames) {
   const arch = opts.arch;
 
+  // Download itch-setup once (kitch-setup is retired, same executable)
+  const url = `https://broth.itch.zone/itch-setup/linux-${arch}/LATEST/unpacked/default`;
+  $(`curl -f -L ${url} -o staging/itch-setup`);
+  $(`chmod +x staging/itch-setup`);
+
   for (const appName of appNames) {
     const dist = `artifacts/install-${appName}/linux-portable-${arch}`;
-
-    const url = `https://broth.itch.zone/${appName}-setup/linux-${arch}/LATEST/unpacked/default`;
     $(`mkdir -p ${dist}`);
-    $(`curl -f -L ${url} -o ${dist}/${appName}-setup`);
-    $(`chmod +x ${dist}/${appName}-setup`);
+    $(`cp staging/itch-setup ${dist}/${appName}-setup`);
   }
 
   info(`That's all! that was easy :)`);
