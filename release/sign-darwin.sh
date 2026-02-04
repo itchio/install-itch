@@ -31,6 +31,9 @@ fi
 
 echo "=== Signing ${APP_NAME} ==="
 
+# Restore execute permission (lost during GitHub Actions artifact upload/download)
+chmod +x "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}-setup"
+
 # Sign the binary inside the .app
 codesign --options runtime --timestamp --entitlements "$ENTITLEMENTS_PATH" \
   --force --verbose --sign "$SIGN_KEY" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}-setup"
