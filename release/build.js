@@ -1,8 +1,22 @@
 //@ts-check
 "use strict";
 
-const { $, setVerbose, chalk, info } = require("@itchio/bob");
+const { $, $$, setVerbose, chalk, info } = require("@itchio/bob");
 const { writeFileSync } = require("fs");
+
+/**
+ * Resolve the actual version from broth if requestedVersion is "LATEST"
+ * @param {string} channel - The broth channel (e.g., "linux-amd64")
+ * @param {string} requestedVersion - The requested version (e.g., "LATEST" or "1.29.0")
+ * @returns {string} The resolved version
+ */
+function resolveVersion(channel, requestedVersion) {
+  if (requestedVersion !== "LATEST") {
+    return requestedVersion;
+  }
+  const url = `https://broth.itch.zone/itch-setup/${channel}/LATEST`;
+  return $$(`curl -sf "${url}"`, { silent: true }).trim();
+}
 
 const version = "25.0.0";
 const allAppNames = ["itch", "kitch"];
@@ -113,14 +127,22 @@ async function main(args) {
  * @param {string[]} appNames
  */
 async function buildWindows(opts, appNames) {
+  const channel = `windows-${opts.arch}`;
+  const resolvedVersion = resolveVersion(channel, opts.itchSetupVersion);
+  info(`Resolved itch-setup version for ${channel}: ${resolvedVersion}`);
+
   // Download itch-setup once (kitch-setup is retired, same executable)
-  const url = `https://broth.itch.zone/itch-setup/windows-${opts.arch}/${opts.itchSetupVersion}/unpacked/default`;
+  const url = `https://broth.itch.zone/itch-setup/${channel}/${resolvedVersion}/unpacked/default`;
   $(`curl -f -L ${url} -o staging/itch-setup.exe`);
 
   for (const appName of appNames) {
     const dir = `artifacts/install-${appName}/windows-${opts.arch}`;
     $(`mkdir -p ${dir}`);
     $(`cp staging/itch-setup.exe ${dir}/${appName}-setup.exe`);
+
+    // Write version metadata as sibling file
+    const versionFile = `artifacts/install-${appName}/windows-${opts.arch}.version.json`;
+    writeFileSync(versionFile, JSON.stringify({ itchSetupVersion: resolvedVersion }), { encoding: "utf-8" });
   }
 
   info(`That's all! That was easy :)`);
@@ -133,9 +155,24 @@ async function buildWindows(opts, appNames) {
  * @param {string[]} appNames
  */
 async function buildDarwin(opts, appNames) {
+  // Resolve versions for both architectures
+  const amd64Version = resolveVersion("darwin-amd64", opts.itchSetupVersion);
+  const arm64Version = resolveVersion("darwin-arm64", opts.itchSetupVersion);
+  info(`Resolved itch-setup version for darwin-amd64: ${amd64Version}`);
+  info(`Resolved itch-setup version for darwin-arm64: ${arm64Version}`);
+
+  // Determine combined version string
+  let itchSetupVersion;
+  if (amd64Version === arm64Version) {
+    itchSetupVersion = amd64Version;
+  } else {
+    itchSetupVersion = `${amd64Version}-amd64+${arm64Version}-arm64`;
+  }
+  info(`Combined darwin itch-setup version: ${itchSetupVersion}`);
+
   // Download itch-setup binaries once (kitch-setup is retired, same executable)
-  const amd64Url = `https://broth.itch.zone/itch-setup/darwin-amd64/${opts.itchSetupVersion}/unpacked/default`;
-  const arm64Url = `https://broth.itch.zone/itch-setup/darwin-arm64/${opts.itchSetupVersion}/unpacked/default`;
+  const amd64Url = `https://broth.itch.zone/itch-setup/darwin-amd64/${amd64Version}/unpacked/default`;
+  const arm64Url = `https://broth.itch.zone/itch-setup/darwin-arm64/${arm64Version}/unpacked/default`;
 
   info(`Downloading itch-setup for darwin-amd64...`);
   $(`curl -f -L "${amd64Url}" -o staging/itch-setup-amd64`);
@@ -197,6 +234,10 @@ async function buildDarwin(opts, appNames) {
     const appBundle = `${dist}/${appBundleName}`;
     $(`mv ${prefix} "${appBundle}"`);
 
+    // Write version metadata as sibling file
+    const versionFile = `artifacts/install-${appName}/darwin-universal.version.json`;
+    writeFileSync(versionFile, JSON.stringify({ itchSetupVersion }), { encoding: "utf-8" });
+
     info(`Created unsigned app bundle: ${appBundle}`);
   }
 
@@ -209,9 +250,12 @@ async function buildDarwin(opts, appNames) {
  */
 async function buildLinux(opts, appNames) {
   const arch = opts.arch;
+  const channel = `linux-${arch}`;
+  const resolvedVersion = resolveVersion(channel, opts.itchSetupVersion);
+  info(`Resolved itch-setup version for ${channel}: ${resolvedVersion}`);
 
   // Download itch-setup once (kitch-setup is retired, same executable)
-  const url = `https://broth.itch.zone/itch-setup/linux-${arch}/${opts.itchSetupVersion}/unpacked/default`;
+  const url = `https://broth.itch.zone/itch-setup/${channel}/${resolvedVersion}/unpacked/default`;
   $(`curl -f -L ${url} -o staging/itch-setup`);
   $(`chmod +x staging/itch-setup`);
 
@@ -219,6 +263,10 @@ async function buildLinux(opts, appNames) {
     const dist = `artifacts/install-${appName}/linux-portable-${arch}`;
     $(`mkdir -p ${dist}`);
     $(`cp staging/itch-setup ${dist}/${appName}-setup`);
+
+    // Write version metadata as sibling file
+    const versionFile = `artifacts/install-${appName}/linux-portable-${arch}.version.json`;
+    writeFileSync(versionFile, JSON.stringify({ itchSetupVersion: resolvedVersion }), { encoding: "utf-8" });
   }
 
   info(`That's all! that was easy :)`);

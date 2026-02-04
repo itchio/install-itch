@@ -1,9 +1,17 @@
 //@ts-check
 "use strict";
 
-const { $, cd } = require("@itchio/bob");
-const { readdirSync } = require("fs");
+const { $, $$, cd } = require("@itchio/bob");
+const { readdirSync, readFileSync, existsSync } = require("fs");
 const { join } = require("path");
+
+/**
+ * Get the short commit hash of the current repository
+ * @returns {string}
+ */
+function getCommitHash() {
+  return $$(`git rev-parse --short HEAD`, { silent: true }).trim();
+}
 
 async function main() {
   const toolsDir = join(process.cwd(), "tools");
@@ -16,16 +24,30 @@ async function main() {
   });
   $(`${toolsDir}/butler -V`);
 
+  const commitHash = getCommitHash();
+
   /**
    * @param {string} project
    */
   const pushProject = async (project) => {
     const projectPage = `itchio/${project}`;
     await cd(project, async () => {
-      const osarches = readdirSync(".");
+      const entries = readdirSync(".");
+      // Filter to only directories (exclude .version.json files)
+      const osarches = entries.filter(entry => !entry.endsWith(".version.json"));
       for (const osarch of osarches) {
         const target = `${projectPage}:${osarch}`;
-        $(`${toolsDir}/butler push "./${osarch}" "${target}"`);
+
+        // Read version metadata from sibling file
+        const versionFile = `${osarch}.version.json`;
+        let userversionArg = "";
+        if (existsSync(versionFile)) {
+          const versionData = JSON.parse(readFileSync(versionFile, { encoding: "utf-8" }));
+          const userversion = `${versionData.itchSetupVersion}+${commitHash}`;
+          userversionArg = ` --userversion "${userversion}"`;
+        }
+
+        $(`${toolsDir}/butler push "./${osarch}" "${target}"${userversionArg}`);
       }
     });
   };
