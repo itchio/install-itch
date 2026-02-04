@@ -13,6 +13,10 @@ on:
           - itch
           - kitch
         default: both
+      itch_setup_version:
+        description: 'itch-setup version (e.g., "LATEST" or specific version)'
+        type: string
+        default: 'LATEST'
       deploy_windows_amd64:
         description: 'Deploy Windows 64-bit'
         type: boolean
@@ -60,7 +64,7 @@ jobs:
 
       - name: Build
         run: |
-          node release/build.js --os ${{ matrix.build_os }} ${{ matrix.build_arch && format('--arch {0}', matrix.build_arch) || '' }} ${{ inputs.app && inputs.app != 'both' && format('--app {0}', inputs.app) || '' }}
+          node release/build.js --os ${{ matrix.build_os }} ${{ matrix.build_arch && format('--arch {0}', matrix.build_arch) || '' }} ${{ inputs.app && inputs.app != 'both' && format('--app {0}', inputs.app) || '' }} --version ${{ inputs.itch_setup_version || 'LATEST' }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

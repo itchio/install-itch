@@ -22,6 +22,7 @@ const allAppNames = ["itch", "kitch"];
  * @type {{
  *  os: OS,
  *  arch?: Arch,
+ *  itchSetupVersion: string,
  * }}
  */
 
@@ -35,6 +36,8 @@ async function main(args) {
   let arch;
   /** @type {string | undefined} */
   let appFilter;
+  /** @type {string} */
+  let itchSetupVersion = "LATEST";
 
   for (let i = 0; i < args.length; i++) {
     let arg = args[i];
@@ -47,7 +50,7 @@ async function main(args) {
         continue;
       }
 
-      if (k === "os" || k === "arch" || k === "app") {
+      if (k === "os" || k === "arch" || k === "app" || k === "version") {
         i++;
         let v = args[i];
 
@@ -69,6 +72,8 @@ async function main(args) {
           } else {
             throw new Error(`Unsupported app ${chalk.yellow(v)}, must be "itch" or "kitch"`);
           }
+        } else if (k === "version") {
+          itchSetupVersion = v;
         }
       }
     }
@@ -86,7 +91,9 @@ async function main(args) {
   }
 
   /** @type {Opts} */
-  let opts = { os, arch };
+  let opts = { os, arch, itchSetupVersion };
+
+  info(`Using itch-setup version: ${itchSetupVersion}`);
 
   $(`rm -rf staging`);
   $(`mkdir -p staging`);
@@ -95,7 +102,7 @@ async function main(args) {
     case "windows":
       return await buildWindows(opts, appNames);
     case "darwin":
-      return await buildDarwin(appNames);
+      return await buildDarwin(opts, appNames);
     case "linux":
       return await buildLinux(opts, appNames);
   }
@@ -107,7 +114,7 @@ async function main(args) {
  */
 async function buildWindows(opts, appNames) {
   // Download itch-setup once (kitch-setup is retired, same executable)
-  const url = `https://broth.itch.zone/itch-setup/windows-${opts.arch}/LATEST/unpacked/default`;
+  const url = `https://broth.itch.zone/itch-setup/windows-${opts.arch}/${opts.itchSetupVersion}/unpacked/default`;
   $(`curl -f -L ${url} -o staging/itch-setup.exe`);
 
   for (const appName of appNames) {
@@ -122,12 +129,13 @@ async function buildWindows(opts, appNames) {
 /**
  * Builds universal macOS binary (Intel + ARM64) and creates unsigned .app bundle.
  * Code signing, DMG creation, and notarization are handled by GitHub Actions.
+ * @param {Opts} opts
  * @param {string[]} appNames
  */
-async function buildDarwin(appNames) {
+async function buildDarwin(opts, appNames) {
   // Download itch-setup binaries once (kitch-setup is retired, same executable)
-  const amd64Url = `https://broth.itch.zone/itch-setup/darwin-amd64/LATEST/unpacked/default`;
-  const arm64Url = `https://broth.itch.zone/itch-setup/darwin-arm64/LATEST/unpacked/default`;
+  const amd64Url = `https://broth.itch.zone/itch-setup/darwin-amd64/${opts.itchSetupVersion}/unpacked/default`;
+  const arm64Url = `https://broth.itch.zone/itch-setup/darwin-arm64/${opts.itchSetupVersion}/unpacked/default`;
 
   info(`Downloading itch-setup for darwin-amd64...`);
   $(`curl -f -L "${amd64Url}" -o staging/itch-setup-amd64`);
@@ -203,7 +211,7 @@ async function buildLinux(opts, appNames) {
   const arch = opts.arch;
 
   // Download itch-setup once (kitch-setup is retired, same executable)
-  const url = `https://broth.itch.zone/itch-setup/linux-${arch}/LATEST/unpacked/default`;
+  const url = `https://broth.itch.zone/itch-setup/linux-${arch}/${opts.itchSetupVersion}/unpacked/default`;
   $(`curl -f -L ${url} -o staging/itch-setup`);
   $(`chmod +x staging/itch-setup`);
 
