@@ -62,6 +62,13 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit
 
+      - name: Install appimagetool
+        if: matrix.build_os == 'linux'
+        run: |
+          curl -fLo appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          sudo mv appimagetool /usr/local/bin/appimagetool
+
       - name: Build
         run: |
           node release/build.js --os ${{ matrix.build_os }} ${{ matrix.build_arch && format('--arch {0}', matrix.build_arch) || '' }} ${{ inputs.app && inputs.app != 'both' && format('--app {0}', inputs.app) || '' }} --version ${{ inputs.itch_setup_version || 'LATEST' }}

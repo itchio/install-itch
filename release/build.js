@@ -2,7 +2,8 @@
 "use strict";
 
 const { $, $$, setVerbose, chalk, info } = require("@itchio/bob");
-const { writeFileSync } = require("fs");
+const { writeFileSync, readFileSync, symlinkSync } = require("fs");
+const { join } = require("path");
 
 /**
  * Resolve the actual version from broth if requestedVersion is "LATEST"
@@ -267,6 +268,54 @@ async function buildLinux(opts, appNames) {
     // Write version metadata as sibling file
     const versionFile = `artifacts/install-${appName}/linux-portable-${arch}.version.json`;
     writeFileSync(versionFile, JSON.stringify({ itchSetupVersion: resolvedVersion }), { encoding: "utf-8" });
+  }
+
+  // Build AppImage if appimagetool is available
+  let hasAppimagetool = false;
+  try {
+    $$(`which appimagetool`, { silent: true });
+    hasAppimagetool = true;
+  } catch (e) {
+    info(`appimagetool not found on PATH, skipping AppImage build`);
+  }
+
+  if (hasAppimagetool) {
+    const desktopTemplate = readFileSync(join(__dirname, "..", "resources", "itch-setup.desktop.in"), { encoding: "utf-8" });
+
+    for (const appName of appNames) {
+      info(`Building AppImage for ${appName}...`);
+
+      const appDir = `staging/${appName}-AppDir`;
+      $(`mkdir -p ${appDir}/usr/bin`);
+
+      // Copy the binary
+      $(`cp staging/itch-setup ${appDir}/usr/bin/${appName}-setup`);
+
+      // Create desktop entry from template
+      const desktopContent = desktopTemplate.replace(/\{\{APPNAME\}\}/g, appName);
+      writeFileSync(`${appDir}/${appName}-setup.desktop`, desktopContent, { encoding: "utf-8" });
+
+      // Copy icon
+      $(`cp resources/images/${appName}-icons/icon256.png ${appDir}/${appName}-setup.png`);
+
+      // Create AppRun symlink
+      symlinkSync(`usr/bin/${appName}-setup`, `${appDir}/AppRun`);
+
+      // Run appimagetool
+      const appImageName = `${appName}-setup-${arch}.AppImage`;
+      $(`appimagetool ${appDir} staging/${appImageName}`);
+
+      // Output to artifacts
+      const dist = `artifacts/install-${appName}/linux-appimage-${arch}`;
+      $(`mkdir -p ${dist}`);
+      $(`cp staging/${appImageName} ${dist}/${appImageName}`);
+
+      // Write version metadata as sibling file
+      const versionFile = `artifacts/install-${appName}/linux-appimage-${arch}.version.json`;
+      writeFileSync(versionFile, JSON.stringify({ itchSetupVersion: resolvedVersion }), { encoding: "utf-8" });
+
+      info(`Created AppImage: ${dist}/${appImageName}`);
+    }
   }
 
   info(`That's all! that was easy :)`);
